@@ -76,18 +76,26 @@
 }
 
 // Resizes the image according to the given content mode, taking into account the image's orientation
+// 这个方法用于缩放图片使用,定义了两种缩放模式,原则是保持原图片的比例缩放,所以最终的图片大小可能和给定的缩放大小不一样,这个比例是根据模式计算得到的.
 - (UIImage *)resizedImageWithContentMode:(UIViewContentMode)contentMode
                                   bounds:(CGSize)bounds
-                    interpolationQuality:(CGInterpolationQuality)quality {
+                    interpolationQuality:(CGInterpolationQuality)quality {    
+    // 缩放后的宽度占目前宽度比例
     CGFloat horizontalRatio = bounds.width / self.size.width;
+    // 缩放后的高度占目前高度比例
     CGFloat verticalRatio = bounds.height / self.size.height;
+    // 缩放比例
     CGFloat ratio;
     
+    // 提供两种缩放的模式,主要是按最大‘边比例’还是最小‘边比例’缩放的问题，
+    // 这么做是为了让宽高是等比例缩放，不是‘自由缩放’,
     switch (contentMode) {
+        // 这种算法可能使图片有点失真,当然如果给定的值太大不管哪种算法都会失真
+        // 确定的是,这种算法缩放后的图片大小’大于等于‘给定值
         case UIViewContentModeScaleAspectFill:
             ratio = MAX(horizontalRatio, verticalRatio);
             break;
-            
+        // 确定的是,这种算法缩放后的图片大小’小于等于‘给定值
         case UIViewContentModeScaleAspectFit:
             ratio = MIN(horizontalRatio, verticalRatio);
             break;

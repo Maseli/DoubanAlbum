@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="2.0" toolsVersion="2844" systemVersion="12C2034" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" initialViewController="Zv3-bv-MDE">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="2.0" toolsVersion="3084" systemVersion="12C3012" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" initialViewController="Zv3-bv-MDE">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="1930"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="2083"/>
     </dependencies>
     <scenes>
         <!--Navigation Controller-->
@@ -1122,6 +1122,8 @@
         <class className="DAHomeViewController" superclassName="UIViewController">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAHomeViewController.h"/>
             <relationships>
+                <relationship kind="action" name="choseCategory:" candidateClass="UIButton"/>
+                <relationship kind="action" name="showPhotosInAlbum:" candidateClass="UISwipeGestureRecognizer"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
                 <relationship kind="outlet" name="_tableView" candidateClass="UITableView"/>
             </relationships>
@@ -1147,6 +1149,8 @@
         <class className="DAScanePhotoViewController" superclassName="UIViewController">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAScanePhotoViewController.h"/>
             <relationships>
+                <relationship kind="action" name="cancel:" candidateClass="UITapGestureRecognizer"/>
+                <relationship kind="action" name="downloadImage:"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
                 <relationship kind="outlet" name="_downloadBtn" candidateClass="UIButton"/>
             </relationships>
@@ -1194,7 +1198,7 @@
         <simulatedScreenMetrics key="destination"/>
     </simulatedMetricsContainer>
     <inferredMetricsTieBreakers>
-        <segue reference="CsU-bL-fYQ"/>
         <segue reference="fdB-2t-cU8"/>
+        <segue reference="z5I-Tc-q5M"/>
     </inferredMetricsTieBreakers>
 </document>

@@ -55,10 +55,12 @@ static BOOL IsShowingCategory = NO;
 {
     [super viewDidLoad];
     
+    // 设置背景图片
     UIImageView *bgImgView = [[UIImageView alloc] initWithFrame:_tableView.bounds];
     bgImgView.autoresizesSubviews = UIViewAutoresizingFlexibleWidth;
     bgImgView.image = [UIImage imageWithFileName:@"tb_bg_album-568h" type:@"jpg"];
     _tableView.backgroundView = bgImgView;
+    
     
     _collectionView.layer.shadowColor = RGBCOLOR(0, 0, 0).CGColor;
     _collectionView.layer.shadowOffset = CGSizeMake(0, 1.5);
@@ -67,11 +69,12 @@ static BOOL IsShowingCategory = NO;
     _collectionView.layer.borderWidth = 0.5;
     _collectionView.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.3].CGColor;
     
+    // 设置navigationBar
     UIImage *topBarImg = [UIImage imageNamed:@"bg_nav.png"];
     
 //    self.navigationController.navigationBar.titleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:TEXT_COLOR_2, UITextAttributeTextColor, RGBCOLOR(255, 215, 150), UITextAttributeTextShadowColor, [NSValue valueWithCGSize:CGSizeMake(1, 1)], UITextAttributeTextShadowOffset, [UIFont boldSystemFontOfSize:18], UITextAttributeFont, nil];
     [self.navigationController.navigationBar setBackgroundImage:topBarImg forBarMetrics:UIBarMetricsDefault];
-    
+
     [self setBarButtonItems];
     
     [self initialData:YES];
