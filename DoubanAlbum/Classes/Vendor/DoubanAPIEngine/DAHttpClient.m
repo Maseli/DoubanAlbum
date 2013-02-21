@@ -47,6 +47,7 @@ NSString * const kDoubanShuoURLString = @"/shuo/v2/statuses/";
 
 @implementation DAHttpClient
 
+// 设置队列实例化的方法
 SINGLETON_GCD(DAHttpClient);
 
 - (id)init {

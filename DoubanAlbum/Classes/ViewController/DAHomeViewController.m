@@ -73,6 +73,8 @@ static BOOL IsShowingCategory = NO;
     UIImage *topBarImg = [UIImage imageNamed:@"bg_nav.png"];
     
 //    self.navigationController.navigationBar.titleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:TEXT_COLOR_2, UITextAttributeTextColor, RGBCOLOR(255, 215, 150), UITextAttributeTextShadowColor, [NSValue valueWithCGSize:CGSizeMake(1, 1)], UITextAttributeTextShadowOffset, [UIFont boldSystemFontOfSize:18], UITextAttributeFont, nil];
+    
+    // navigationController这个属性是NavigationController对UIViewController使用category添加的
     [self.navigationController.navigationBar setBackgroundImage:topBarImg forBarMetrics:UIBarMetricsDefault];
 
     [self setBarButtonItems];
@@ -332,6 +334,7 @@ static BOOL IsShowingCategory = NO;
     [self showOrHideCategory:nil];
 }
 
+// 为NavigationBar设置按钮
 - (void)setBarButtonItems{
     _refreshBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     _refreshBtn.frame = CGRectMake(0, 0, 44, 44);
@@ -395,6 +398,7 @@ static BOOL IsShowingCategory = NO;
     self.navigationItem.titleView = titleView;
 }
 
+/* 内部方法:初始化数据,参数inital为是否旋转刷新按钮 */
 - (void)initialData:(BOOL)inital{
     NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
     
@@ -507,7 +511,9 @@ static BOOL IsShowingCategory = NO;
     }
 }
 
+// 刷新列表数据
 - (void)doRefresh:(UIButton *)button{
+    // 让按钮开始旋转
     [self startAnimation:button];
     
 //    NSString *file = [[NSBundle mainBundle] pathForResource:@"albums" ofType:@"plist"];
@@ -516,23 +522,29 @@ static BOOL IsShowingCategory = NO;
     [self initialData:NO];
 }
 
+/* 一个让按钮围绕z轴旋转的方法 */
 - (void)startAnimation:(UIButton *)button{
     button.userInteractionEnabled = NO;
     
     CABasicAnimation* rotationAnimation;
+    // transform.rotation.z是垂直与平面的轴即z轴
     rotationAnimation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
     rotationAnimation.toValue = [NSNumber numberWithFloat: 0-M_PI * 2.0 ];///* full rotation*/ * rotations * duration ];
     rotationAnimation.duration = 1;
     rotationAnimation.cumulative = YES;
+    // 转无限圈
     rotationAnimation.repeatCount = CGFLOAT_MAX;
     
     [button.layer addAnimation:rotationAnimation forKey:@"rotationAnimation"];
 }
 
+
 - (void)stopAnimation{
     [DAHttpClient decrementActivityCount];
     
+    // 使能刷新按钮响应事件
     _refreshBtn.userInteractionEnabled = YES;
+    // 移除所有attach to刷新按钮layer的动画
     [_refreshBtn.layer removeAllAnimations];
 }
 

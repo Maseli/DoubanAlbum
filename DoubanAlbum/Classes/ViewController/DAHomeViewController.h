@@ -17,11 +17,14 @@
     __weak IBOutlet UITableView *_tableView;
     __weak IBOutlet UICollectionView *_collectionView;
     
+    // Navigationbar的刷新按钮
     UIButton                *_refreshBtn;
-    
+
     NSUInteger              _lastSelectedRow;
 }
 
+
+/* 有些方法没在interface里声明,说明是一个外部不能调用的内部方法 */
 
 - (void)checkCagetory:(UIButton *)button;
 
