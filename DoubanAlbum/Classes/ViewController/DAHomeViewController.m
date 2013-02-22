@@ -402,12 +402,15 @@ static BOOL IsShowingCategory = NO;
 - (void)initialData:(BOOL)inital{
     NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
     
+    // 让statusBar的网络请求图标显示
     [DAHttpClient incrementActivityCount];
     
+    // 刷新时让'刷新按钮'开始旋转
     if (inital) {
         [self startAnimation:_refreshBtn];
     }
     
+    // 刷新时声明一段具体的代码块,处理传入的数据
     SLDictionaryBlock localBlock = (inital?^(NSDictionary *dic) {
         _appData = dic;
         

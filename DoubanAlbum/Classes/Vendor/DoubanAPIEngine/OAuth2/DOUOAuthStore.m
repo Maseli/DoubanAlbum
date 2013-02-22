@@ -111,10 +111,12 @@ static DOUOAuthStore *myInstance = nil;
   [self save];
 }
 
-
+/* 测试是否过期 */
 - (BOOL)hasExpired {
   NSDate *now = [NSDate date];
+  // 过期时间之前30分钟
   NSDate *thirtyMinutesBeforeExpires = [self.expiresIn dateByAddingTimeInterval:-1800];
+  // 判断一下现在有没有过期
   if([now compare:thirtyMinutesBeforeExpires] == NSOrderedAscending) {
 		return NO;
 	}

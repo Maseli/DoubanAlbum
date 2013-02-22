@@ -28,8 +28,11 @@ SINGLETON_GCD(DoubanAuthEngine)
 #pragma mark - Helper
 
 + (NSUInteger)currentUserId{
+    // 判断DoubanAuth是否有效
     if ([[DoubanAuthEngine sharedDoubanAuthEngine] isValid]) {
+        // 获得DOUOAuthStore实例
         DOUOAuthStore *store = [DOUOAuthStore sharedInstance];
+        // 返回userId
         return store.userId;
     }
     return NSNotFound;
@@ -38,9 +41,11 @@ SINGLETON_GCD(DoubanAuthEngine)
 
 #pragma mark - OAuth
 
+/* 判断DoubanAuth是否有效 */
 - (BOOL)isValid {
     DOUOAuthStore *store = [DOUOAuthStore sharedInstance];
     if (store.accessToken) {
+        // 判断当前时间是否失效
         BOOL isValid = ![store hasExpired];
         
         SLLog(@"Auth isValid %@", isValid?@"YES":@"NO");

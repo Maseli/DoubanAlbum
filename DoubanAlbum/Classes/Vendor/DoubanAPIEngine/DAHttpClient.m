@@ -47,38 +47,45 @@ NSString * const kDoubanShuoURLString = @"/shuo/v2/statuses/";
 
 @implementation DAHttpClient
 
-// 设置队列实例化的方法
+// 在GCD队列中实例化,目的貌似是为了单例
 SINGLETON_GCD(DAHttpClient);
 
 - (id)init {
+    // 判断当前时间是否有效
     BOOL isValid = [[DoubanAuthEngine sharedDoubanAuthEngine] isValid];
+    // 根据是否有效判断,得到一个HttpClient实例(需要授权或不需要的连接)
     if (isValid) {
-        self = [super initWithBaseURL:[NSURL URLWithString:kHttpsApiBaseUrl]]; //需要授权的api
-    }else {
+        self = [super initWithBaseURL:[NSURL URLWithString:kHttpsApiBaseUrl]]; //需要授权的api,这个URL是https的
+    } else {
         self = [super initWithBaseURL:[NSURL URLWithString:kHttpApiBaseUrl]];
     }
     
+    // 如果HttpClient已经完成初始化
     if (self) {
         [self registerHTTPOperationClass:[AFJSONRequestOperation class]];
         
-        //set HTTP Header
+        //set HTTP Header,这个参数Accept是一定要有的
         [self setDefaultHeader:@"Accept" value:@"application/json"];
         
         if (isValid) {
+            // 如果认证有效,设置参数access_token
             id accessToken = [[DOUOAuthStore sharedInstance] accessToken];
             [self setDefaultHeader:kAccessTokenKey value:accessToken];
         }
         
+        // 设置顶部statusBar的网络指示图标可显示,在请求数据和结束时自动控制显示隐藏
         [AFNetworkActivityIndicatorManager sharedManager].enabled = YES;
     }
     return self;
 }
 
+/* 让statusBar网络请求的图标的显示计数器++ */
 + (void)incrementActivityCount{
     [DAHttpClient sharedDAHttpClient];
     [[AFNetworkActivityIndicatorManager sharedManager] incrementActivityCount];
 }
 
+/* 让statusBar网络请求的图标的显示计数器-- */
 + (void)decrementActivityCount{
     [[AFNetworkActivityIndicatorManager sharedManager] decrementActivityCount];
 }

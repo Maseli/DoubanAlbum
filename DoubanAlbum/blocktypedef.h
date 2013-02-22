@@ -9,6 +9,9 @@
 #ifndef DoubanAlbum_blocktypedef_h
 #define DoubanAlbum_blocktypedef_h
 
+// 声明好多个代码块,例如第4个可以这么理解——void(^)(NSArray *array)
+// typedef是关键字,SLArrayBlock
+
 typedef void(^SLBlock)(void);
 typedef void(^SLBlockBlock)(SLBlock block);
 typedef void(^SLObjectBlock)(id obj);
