@@ -14,6 +14,7 @@
 
 #define USER_DEFAULT                [NSUserDefaults standardUserDefaults]
 
+// Caches目录
 #define APP_CACHES_PATH             [NSSearchPathForDirectoriesInDomains (NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0]
 
 #define APP_SCREEN_WIDTH            [UIScreen mainScreen].bounds.size.width

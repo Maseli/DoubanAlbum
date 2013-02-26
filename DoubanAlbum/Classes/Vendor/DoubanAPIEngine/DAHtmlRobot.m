@@ -247,18 +247,23 @@ SINGLETON_GCD(DAHtmlRobot)
     NSUInteger countPerPage = 0;
     NSString *target = nil;
 
+    // 这里根据类型的不同,其实只有两种,无非是相册列表和相片列表,抓相册列表的数据需要有people的userName,抓相片列表的数据需要有相册的albumId
     if (dataType == DoubanDataTypeAlbumsForUser) { //用户相册列表
+        // 设置URL的格式
         fomatter = [self commandFor:kUserAlbumUrlFomater];
+        // 设置单页显示多数相册——16个
         countPerPage = [[self commandFor:kUserAlbumCountPerPage] integerValue];
         
         target = userName;
     }else if (dataType == DoubanDataTypePhotosInAlbum) { ////相册图片
+        // 设置URL的格式
         fomatter = [self commandFor:kPhotosInAlbumUrlFomater];
+        // 设置单页显示多少照片——18个
         countPerPage = [[self commandFor:kPhotosInAlbumCountPerPage] integerValue];
         
         target = [@(albumId) description];
     }
-    
+        
     [self cachedDataWithAlbumId:albumId
                        userName:userName
                           start:start
@@ -273,23 +278,28 @@ SINGLETON_GCD(DAHtmlRobot)
                          if (count == countPerPage) {
                              completion(dic);
                          }else{
+                             // 根据格式拼好一个URL链接
                              NSString *url = [NSString stringWithFormat:fomatter, target, start];
                              
                              SLLog(@"url %@", url);
                              
+                             // 显示网络请求指示图标
                              [DAHttpClient incrementActivityCount];
+                             // 创建URLRequest
                              NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
                              [NSURLConnection sendAsynchronousRequest:request
                                                                 queue:[self sharedOperationQueue]
                                                     completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
+                                                    // 取消显示网络请求指示图标
                                                         [DAHttpClient decrementActivityCount];
-                                                        
+                                                    // 如果没有报错
                                                         if (error == nil) {
                                                             __block id results = nil;
                                                             [GCDHelper dispatchBlock:^{
                                                                 if (dataType == DoubanDataTypePhotosInAlbum){
-                                                                    results = [NSMutableDictionary dictionaryWithCapacity:2];
-                                                                    
+                                                // 声明一个存储解析结果的Map
+                                                        results = [NSMutableDictionary dictionaryWithCapacity:2];
+                                                                    // 从请求获取的data中解析数据
                                                                     [self analysePhotosInAlbumWithData:data withResults:results express:[self commandFor:kPhotosIdInAlbumExpression]];
                                                                     
                                                                     [self cacheData:results[@"photoIds"] forUser:nil forAlbum:albumId start:start];
@@ -299,8 +309,9 @@ SINGLETON_GCD(DAHtmlRobot)
                                                                         [DAHtmlRobot cacheAlbumDescribe:des forAlbum:albumId];
                                                                     }
                                                                 }else{
+                                                  // 用户相册列表
                                                                     results = [NSMutableArray arrayWithCapacity:countPerPage];
-                                                                    
+                                                                    // 从请求获取的data中解析数据
                                                                     [self analyseUserAlbumsWithData:data withResults:results];
                                                                     
                                                                     [self cacheData:results forUser:userName forAlbum:0 start:start];
@@ -309,6 +320,7 @@ SINGLETON_GCD(DAHtmlRobot)
                                                                 completion(results);
                                                             }];
                                                         }else{
+                                                    // 如果请求失败
                                                             dispatch_async(dispatch_get_main_queue(), ^{
                                                                 completion(nil);
                                                             });
@@ -318,21 +330,32 @@ SINGLETON_GCD(DAHtmlRobot)
                      }];
 }
 
+/* 使用正则分析网页抓回的数据(HTML),得到相册/照片的id集合以及介绍文字 */
 + (void)analysePhotosInAlbumWithData:(NSData *)data withResults:(NSMutableDictionary *)results express:(NSString *)express{
+    
     NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     
+    // MYDEBUG
+    NSLog(@"HTML: %@",html);
+    
     NSError *err;
-    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:express
-                                                                      options:NSRegularExpressionCaseInsensitive
-                                                                        error:&err];
+    // 声明正则表达式
+    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:express options:NSRegularExpressionCaseInsensitive error:&err];
+    // 如果正则成功实例化
     if (err == nil) {
+        // 匹配相册id或照片id
         NSArray *matches = [regex matchesInString:html options:0 range:NSMakeRange(0, [html length])];
         
         NSMutableArray *photoIds = [NSMutableArray arrayWithCapacity:matches.count];
         for (NSTextCheckingResult *result in matches) {
+            // express参数示例:http://www.douban.com/photos/photo/[0-9]*/
+            // 这个是为了定位活动参数在express里所处的相对位置
             NSUInteger preL = [express rangeOfString:@"[0"].location;
             
+            // 根据result的结果位置与相对位置求和,得到活动参匹配到结果的location
+            // 再等到那个参数对应结果的length,最后-1是为了去掉结尾的'/'符号只保留数字
             NSString *photo = [html substringWithRange:NSMakeRange(result.range.location+preL, result.range.length-preL-1)];
+            // 如果当前的id集合中没有这个id,就添加到id集合中
             if (![photoIds containsObject:photo]) {
                 [photoIds addObject:photo];
             }
@@ -342,18 +365,25 @@ SINGLETON_GCD(DAHtmlRobot)
     }
     
     ////////抓 相册描述
+    // 声明正则
     regex = [[NSRegularExpression alloc] initWithPattern:[self commandFor:kAlbumDescribeExpression]
                                                  options:NSRegularExpressionCaseInsensitive
                                                    error:&err];
     if (err == nil) {
+        // 如果声明成功,匹配相册描述
         NSArray *matches = [regex matchesInString:html options:NSMatchingReportCompletion range:NSMakeRange(0, [html length])];
+        // 貌似这OC没有泛型,取匹配到的最后一个结果
         NSTextCheckingResult *result = [matches lastObject];
         if (result) {
+            // start是匹配到的结果之后的第一个字符,所以+length
             NSUInteger start = result.range.location+result.range.length;
             
+            // 在start之后一个字符开始到结尾搜</div>,返回第一个结果的location
             NSUInteger end = [html rangeOfString:@"</div>" options:0 range:NSMakeRange(start, html.length-start-1)].location;
             
+            // 计算描述串的长度,按照位置取出描述内容
             NSString *describe = [html substringWithRange:NSMakeRange(start, end-start)];
+            // 设置相册描述
             results[Key_Album_Describe] = describe;
         }
     }
@@ -560,12 +590,14 @@ SINGLETON_GCD(DAHtmlRobot)
     [orginDic writeToFile:path atomically:YES];
 }
 
+
 + (void)cacheData:(NSArray *)data forUser:(NSString *)userName forAlbum:(NSUInteger)albumId start:(NSUInteger)start{
     if (data.count == 0) return;
     
     NSString *fomatter = nil;
     NSString *fileName = nil;
     NSUInteger countPerPage = 0;
+    // 通过userName参数判断显示哪种类型
     if (userName) { //用户相册列表
         fomatter = kUserAlbumPath;
         fileName = userName;

@@ -475,8 +475,10 @@ static BOOL IsShowingCategory = NO;
         NSString *appInStoreVersion = dic[@"app_version"];
         NSString *appVersion = [BundleHelper bundleShortVersionString];
         
+        // 有些时候必须要更新的,有些时候是可以选择取消的
+        // 但是这个必须要更新的动作貌似是AppStore不允许的
         BOOL needForceUpdate = [dic[@"force_update"] boolValue];
-        if ([appInStoreVersion compare:appVersion]) {
+        if ([appInStoreVersion compare:appVersion] == NSOrderedDescending) {
             if (!needForceUpdate) {
                 UIAlertView *alert  = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"升级提示", nil) message:NSLocalizedString(@"豆瓣相册有了新版本，赶紧去升级体验一下吧", nil)  delegate:self cancelButtonTitle:NSLocalizedString(@"取消", nil) otherButtonTitles:NSLocalizedString(@"去下载", nil), nil];
                 [alert show];
@@ -487,8 +489,10 @@ static BOOL IsShowingCategory = NO;
         }
         
         NSTimeInterval end = [NSDate timeIntervalSinceReferenceDate];
+        // 这个delay的计算是为了保证这个过程超过2秒,在加载数据已经超过2秒的情况下,0延时继续执行,在加载数据没有超过2秒的情况下,等待一段时间至2秒耗尽,
         NSTimeInterval delay = (end-start>2.0?0:(2.0-(end-start)));
         
+        // 延迟调用,使刷新按钮旋转效果和网络请求指示图标消失
         [self performSelector:@selector(stopAnimation) withObject:nil afterDelay:delay];
     }];
     
@@ -541,7 +545,7 @@ static BOOL IsShowingCategory = NO;
     [button.layer addAnimation:rotationAnimation forKey:@"rotationAnimation"];
 }
 
-
+/* 取消网络连接指示图标,停止刷新按钮滚动效果 */
 - (void)stopAnimation{
     [DAHttpClient decrementActivityCount];
     
