@@ -310,6 +310,7 @@ SINGLETON_GCD(DAHttpClient);
 }
 
 ///album advanced
+/* 根据用户名查找其相册 */
 + (void)userAlbumsWithUserName:(NSString *)userName start:(NSUInteger)start success:(SLArrayBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     
     [DAHtmlRobot userAlbumsWithUserName:userName
