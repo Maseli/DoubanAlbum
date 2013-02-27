@@ -77,8 +77,10 @@ static BOOL IsShowingCategory = NO;
     // navigationController这个属性是NavigationController对UIViewController使用category添加的
     [self.navigationController.navigationBar setBackgroundImage:topBarImg forBarMetrics:UIBarMetricsDefault];
 
+    // 放置刷新按钮
     [self setBarButtonItems];
     
+    // 初始化数据
     [self initialData:YES];
     
     [[DADataEnvironment sharedDADataEnvironment] addObserver:self forKeyPath:@"collectedAlbums" options:NSKeyValueObservingOptionNew context:nil];
@@ -414,29 +416,40 @@ static BOOL IsShowingCategory = NO;
     SLDictionaryBlock localBlock = (inital?^(NSDictionary *dic) {
         _appData = dic;
         
+        // 当dic.count满足条件时,把Dictionary的值里的http___3ww.、&lt;和&gt;处理了
+        // 话说这个count肯定满足条件,因为command是放在plist里的,count和程序声明的对应
+        // 这个调用完了以后就设置了DAHtmlRobot的RobotCommands参数
         [DAHtmlRobot setRobotCommands:dic[@"command"]];
+        // 顶部的标签组重新加载数据
         [_collectionView reloadData];
         
+        // 这个是分类,也是提前写在plist文件里的
         NSArray *doubanCategory = [dic valueForKeyPath:@"cg_all"];
         DATagsLayout *layout = (DATagsLayout *)_collectionView.collectionViewLayout;
         layout.category = doubanCategory;
         
+        // 取分类个数
         NSUInteger count = [doubanCategory count];
         if (count > 0) {
+            // 随机设置一个分类为选中
+            // arc4random()%x可以得到1~x-1之间的随机数
             _seletedCategory = arc4random()%count;
         }
         
+        // 将选中分类的值设置为数据源
         _dataSource = [doubanCategory objectAtIndex:_seletedCategory];
+        // 设置标题为选中分类名字
         self.title = _dataSource[@"category"];
         
+        // 表格刷新数据
         [_tableView reloadData];
     }:nil);
-    
+        
     [DAHtmlRobot requestCategoryLocalData:localBlock completion:^(NSDictionary *dic) {
         BOOL needUpdateView = [dic[@"needUpdateView"] boolValue];
         if (needUpdateView) {
             _appData = dic;
-            
+            // 设置DAHtmlRobot的RobotCommands参数
             [DAHtmlRobot setRobotCommands:dic[@"command"]];
             NSArray *doubanCategory = [dic valueForKeyPath:@"cg_all"];
             
@@ -475,8 +488,13 @@ static BOOL IsShowingCategory = NO;
         NSString *appInStoreVersion = dic[@"app_version"];
         NSString *appVersion = [BundleHelper bundleShortVersionString];
         
+<<<<<<< HEAD
         // 有些时候必须要更新的,有些时候是可以选择取消的
         // 但是这个必须要更新的动作貌似是AppStore不允许的
+=======
+        NSLog(@"%@ %@",appInStoreVersion,appVersion);
+        
+>>>>>>> reading
         BOOL needForceUpdate = [dic[@"force_update"] boolValue];
         if ([appInStoreVersion compare:appVersion] == NSOrderedDescending) {
             if (!needForceUpdate) {

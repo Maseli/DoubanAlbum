@@ -51,8 +51,10 @@ SINGLETON_GCD(DAHtmlRobot)
         [self initialCacheFolder];
         
         RobotCommands_Default = @{
+            // 经测试,这个是douban一张照片的url格式
             kPhotosIdInAlbumExpression:@"http://www.douban.com/photos/photo/[0-9]*/",
             kAlbumDescribeExpression:@"<div id=\"link-report\" class=\"pl\" style=\"padding-bottom:30px\">",
+            // 这个是douban一个相册的url格式
             kUserAlbumIdExpression:@"http://www.douban.com/photos/album/[0-9]*/",
             kAlbumCoverInUserAlbumsExpression:@"<img class=\"album\" src=\"http://",
         
@@ -62,11 +64,13 @@ SINGLETON_GCD(DAHtmlRobot)
             kAlbumNameInUserAlbumsExpress:@"<a href=\"http://www.douban.com/photos/album/%@/\">",
         
             kUserAlbumCountPerPage:@(16),
+            // 相册中,一页最多18张照片
             kPhotosInAlbumCountPerPage:@(18)
         };
     }
 }
 
+/* 当count满足条件时,把Dictionary的值里的http___3ww.、&lt;和&gt;处理了 */
 + (void)setRobotCommands:(NSDictionary *)dic{
     SLLog(@"dic %@", dic);
     
@@ -74,27 +78,36 @@ SINGLETON_GCD(DAHtmlRobot)
         RobotCommands = [NSMutableDictionary dictionaryWithDictionary:dic];
         
         NSString *httpString = @"http___3ww.";
+        // 这个写法巨像动态语言使用闭包处理集合
+        // 作用是把Dictionary的值里的http___3ww.、&lt;和&gt;处理了
         [dic enumerateKeysAndObjectsUsingBlock:^(id key, NSString *obj, BOOL *stop) {
-            NSMutableString *muObj = [NSMutableString stringWithString:obj];;
+            NSMutableString *muObj = [NSMutableString stringWithString:obj];
             
+            // 在obj中寻找"http___3ww.",话说那个.不替也行,还有那两个ww,这么搜为了逻辑
             NSRange range = [obj rangeOfString:httpString];
+            // 如果找到
             if (range.location != NSNotFound) {
+                // 这句貌似没用
                 muObj = [NSMutableString stringWithString:obj];
+                // 将http___3ww.替为http://www.
                 [muObj replaceCharactersInRange:range withString:@"http://www."];
             }
-        
+            // 寻找'<',看来源字符串可能有转义
             range = [muObj rangeOfString:@"&lt;"];
+            // 可能有多个'<',使用while在代码结尾时重新搜索
             while (range.location != NSNotFound) {
                 [muObj replaceCharactersInRange:range withString:@"<"];
                 range = [muObj rangeOfString:@"&lt;"];
             }
             
+            // 这次是'>',和之前的'<'一样
             range = [muObj rangeOfString:@"&gt;"];
             while (range.location != NSNotFound) {
                 [muObj replaceCharactersInRange:range withString:@">"];
                 range = [muObj rangeOfString:@"&gt;"];
             }
             
+            // 将处理完成的字符串设置回原Dictionary的对应Value
             RobotCommands[key] = muObj;
         }];
         
