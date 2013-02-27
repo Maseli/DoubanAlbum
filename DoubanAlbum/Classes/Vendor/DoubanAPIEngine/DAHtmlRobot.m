@@ -242,6 +242,7 @@ SINGLETON_GCD(DAHtmlRobot)
                 }];
 }
 
+/* 根据条件抓取网页数据,然后写入到 */
 + (void)dataWithDataType:(DoubanDataType)dataType userName:(NSString *)userName albumId:(NSUInteger)albumId start:(NSUInteger)start completion:(SLObjectBlock)completion{
     NSString *fomatter = nil;
     NSUInteger countPerPage = 0;
@@ -268,6 +269,7 @@ SINGLETON_GCD(DAHtmlRobot)
                        userName:userName
                           start:start
                      completion:^(id dic) {
+                         // 这个dic是之前程序异步从CACHE中取的一些数据(相册或者照片)
                          NSUInteger count = 0;
                          if (dataType == DoubanDataTypePhotosInAlbum){
                              count = [[dic valueForKey:@"photoIds"] count];
@@ -275,6 +277,7 @@ SINGLETON_GCD(DAHtmlRobot)
                              count = [dic count];
                          }
                          
+                         // 
                          if (count == countPerPage) {
                              completion(dic);
                          }else{
@@ -297,23 +300,24 @@ SINGLETON_GCD(DAHtmlRobot)
                                                             __block id results = nil;
                                                             [GCDHelper dispatchBlock:^{
                                                                 if (dataType == DoubanDataTypePhotosInAlbum){
-                                                // 声明一个存储解析结果的Map
+                                                    // 声明一个存储解析结果的Map
                                                         results = [NSMutableDictionary dictionaryWithCapacity:2];
                                                                     // 从请求获取的data中解析数据
                                                                     [self analysePhotosInAlbumWithData:data withResults:results express:[self commandFor:kPhotosIdInAlbumExpression]];
-                                                                    
+                                                                    // 在CACHE路径写plist存results[@"photoIds"]
                                                                     [self cacheData:results[@"photoIds"] forUser:nil forAlbum:albumId start:start];
                                                                     
                                                                     NSString *des = results[Key_Album_Describe];
                                                                     if (des.length > 0) {
+                                                                        // 把描述写到CACHE的plist文件中
                                                                         [DAHtmlRobot cacheAlbumDescribe:des forAlbum:albumId];
                                                                     }
                                                                 }else{
-                                                  // 用户相册列表
+                                                                    // 用户相册列表
                                                                     results = [NSMutableArray arrayWithCapacity:countPerPage];
                                                                     // 从请求获取的data中解析数据
                                                                     [self analyseUserAlbumsWithData:data withResults:results];
-                                                                    
+                                                                    // 在CACHE路径写plist存results
                                                                     [self cacheData:results forUser:userName forAlbum:0 start:start];
                                                                 }
                                                             } completion:^{
@@ -330,7 +334,7 @@ SINGLETON_GCD(DAHtmlRobot)
                      }];
 }
 
-/* 使用正则分析网页抓回的数据(HTML),得到相册/照片的id集合以及介绍文字 */
+/* 使用正则分析网页抓回的数据(HTML),得到照片的id集合以及介绍文字 */
 + (void)analysePhotosInAlbumWithData:(NSData *)data withResults:(NSMutableDictionary *)results express:(NSString *)express{
     
     NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
@@ -391,21 +395,22 @@ SINGLETON_GCD(DAHtmlRobot)
     SLLog(@"count %d \n%@ %@", [results count], @"photos", results);
 }
 
+/* 使用正则分析网页抓回的数据(HTML),得到相册的封面图片id、名称 */
 + (void)analyseUserAlbumsWithData:(NSData *)data withResults:(NSMutableArray *)results{
     NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     
     NSError *err;
-    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:[self commandFor:kUserAlbumIdExpression]
-                                                                      options:NSRegularExpressionCaseInsensitive
-                                                                        error:&err];
+    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:[self commandFor:kUserAlbumIdExpression] options:NSRegularExpressionCaseInsensitive error:&err];
     if (err == nil) {
         NSArray *matches = [regex matchesInString:html options:0 range:NSMakeRange(0, [html length])];
         
         NSMutableArray *temAlbum = [NSMutableArray arrayWithCapacity:matches.count];
         
         NSUInteger preL = [[self commandFor:kUserAlbumIdExpression] rangeOfString:@"[0"].location;
+        // 迭代结果,分析
         for (NSTextCheckingResult *result0 in matches) {
             NSString *albumId = [html substringWithRange:NSMakeRange(result0.range.location+preL, result0.range.length-preL-1)];
+            // 如果这个相册的id不存在,获取其id、封面地址、相册名字信息放入返回的结果集
             if (![temAlbum containsObject:albumId]) {
                 [temAlbum addObject:albumId];
                 
@@ -414,9 +419,7 @@ SINGLETON_GCD(DAHtmlRobot)
                 
                 ////////相册封面
                 NSString *albumCoverE = [self commandFor:kAlbumCoverInUserAlbumsExpression];
-                NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:albumCoverE
-                                                                                  options:NSRegularExpressionCaseInsensitive
-                                                                                    error:&err];
+                NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:albumCoverE options:NSRegularExpressionCaseInsensitive error:&err];
                 NSUInteger start = result0.range.location+result0.range.length;
                 NSArray *matches = [regex matchesInString:html options:NSMatchingReportCompletion range:NSMakeRange(start, [html length]-start-1)];
                 if (matches.count > 0) {
@@ -543,19 +546,28 @@ SINGLETON_GCD(DAHtmlRobot)
         countPerPage = [[self commandFor:kPhotosInAlbumCountPerPage] integerValue];
     }
     
+    // 从CACHE的plist取出数据写结果,可能是相册集合或者是照片集合
     __block NSMutableArray *results = nil;
+    // 从CACHE的plist取出相册描述信息
     __block NSString *albumDescribe = nil;
+    // 一些异步代码
     [GCDHelper dispatchBlock:^{
+        
+        /************ 先是一个从CACHE中取数据的过程 ************/
+        
         NSString *photoListInAlbumCachePath = [APP_CACHES_PATH stringByAppendingPathComponent:fomatter];
         NSString *path = [NSString stringWithFormat:@"%@/%@.plist", photoListInAlbumCachePath, fileName];
         
         NSMutableDictionary *orginDic = [[NSMutableDictionary alloc] initWithContentsOfFile:path];
         
+        // 计算迭代次数,最多为一页的额定数量(视类型定)
         NSUInteger loop = MIN(countPerPage, orginDic.count);
+        // 创建结果集,每迭代一个数据
         results = [NSMutableArray arrayWithCapacity:loop];
         
         SLLog(@"读取 %@ %@ start %d count %d", userName?@"userAlbum":[NSString stringWithFormat:@"album %d", albumId], userName?userName:[@(albumId) description], start, loop);
         
+        // 从start的index开始取数据,写结果集
         int i;
         for (i = 0; i < loop; i++) {
             id photoId = [orginDic objectForKey:[@(i+start) description]];
@@ -564,15 +576,19 @@ SINGLETON_GCD(DAHtmlRobot)
             [results addObject:photoId];
         }
         
+        // 如果是加载相册中图片的话,取相册描述的相关信息
         if (albumId) {
             albumDescribe = [orginDic objectForKey:Key_Album_Describe];
         }
     } completion:^{
+        /********** 获取完数据这些结果需要传递到下一步 **********/
         if (albumId) {
+            // 如果是照片集合(一个相册),
             NSMutableDictionary *muDic = [@{@"photoIds":results} mutableCopy];
             if (albumDescribe.length > 0) {
                 muDic[Key_Album_Describe] = albumDescribe;
             }
+            // 传递拷贝了的一份结果
             completion(muDic);
         }else{
             completion(results);
@@ -580,7 +596,9 @@ SINGLETON_GCD(DAHtmlRobot)
     }];
 }
 
+/* 将相册描述写到CACHE的plist文件中 */
 + (void)cacheAlbumDescribe:(NSString *)des forAlbum:(NSUInteger)albumId{
+    // 找到CACHE下对应目录的路径
     NSString *photoListInAlbumCachePath = [APP_CACHES_PATH stringByAppendingPathComponent:kPhotosInAlbumPath];
     NSString *path = [NSString stringWithFormat:@"%@/%@.plist", photoListInAlbumCachePath, [@(albumId) description]];
     
@@ -590,7 +608,12 @@ SINGLETON_GCD(DAHtmlRobot)
     [orginDic writeToFile:path atomically:YES];
 }
 
-
+/*
+ * 把照片id/相册信息列表转为Map写成plist文件(key从0开始),放在CACHE路径下
+ * 通过username
+ * data:照片id数组
+ * start:作为Map中key的id,由于有分页的问题,所以每页数据开始的值是不一样的,只有第一页的start为0
+ */
 + (void)cacheData:(NSArray *)data forUser:(NSString *)userName forAlbum:(NSUInteger)albumId start:(NSUInteger)start{
     if (data.count == 0) return;
     
@@ -611,10 +634,12 @@ SINGLETON_GCD(DAHtmlRobot)
         countPerPage = [[self commandFor:kPhotosInAlbumCountPerPage] integerValue];
     }
     
+    // 获取CACHE路径,并在结尾拼了一个文件夹的名字
     NSString *photoListInAlbumCachePath = [APP_CACHES_PATH stringByAppendingPathComponent:fomatter];
     NSString *path = [NSString stringWithFormat:@"%@/%@.plist", photoListInAlbumCachePath, fileName];
     
     NSMutableDictionary *newAddedDic = [NSMutableDictionary dictionaryWithCapacity:data.count];
+    // 又是一个像闭包一样的写法,可以使用一个代码块迭代整个数组
     [data enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
         newAddedDic[[@(idx+start) description]] = obj;
     }];
@@ -622,9 +647,11 @@ SINGLETON_GCD(DAHtmlRobot)
     NSFileManager *manager = [NSFileManager defaultManager];
     if (![manager fileExistsAtPath:path])
     {
+        // 新建一个plist存放Map的数据
         SLLog(@"创建 %@ %@ start %d count %d", userName?@"userAlbum":@"album", userName?userName:[@(albumId) description], start, newAddedDic.count);
         [newAddedDic writeToFile:path atomically:YES];
     }else{
+        // 更新一个plist,先实例化为Map,把另一个Map添加到这个Map中,再将其写为文件
         SLLog(@"更新 %@ %@ start %d count %d", userName?@"userAlbum":@"album", userName?userName:[@(albumId) description], start, newAddedDic.count);
         NSMutableDictionary *orginDic = [[NSMutableDictionary alloc] initWithContentsOfFile:path];
         [orginDic addEntriesFromDictionary:newAddedDic];

@@ -59,6 +59,7 @@ dispatch_queue_t load_cached_image_processing_queue() {
     });
 }
 
+/* 一个并发API封装 */
 + (void)dispatchBlock:(SLBlock)block completion:(SLBlock)completion{
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @autoreleasepool {
