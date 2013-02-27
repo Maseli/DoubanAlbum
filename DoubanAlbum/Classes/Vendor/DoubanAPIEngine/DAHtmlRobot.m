@@ -245,6 +245,7 @@ SINGLETON_GCD(DAHtmlRobot)
                 }];
 }
 
+/* 根据UserName查询相册信息 */
 + (void)userAlbumsWithUserName:(NSString *)userName start:(NSUInteger)start completion:(SLArrayBlock)completion{
     [self dataWithDataType:DoubanDataTypeAlbumsForUser
                   userName:userName
@@ -277,7 +278,8 @@ SINGLETON_GCD(DAHtmlRobot)
         
         target = [@(albumId) description];
     }
-        
+    
+    // 先从本地CACHE的plist中获取数据,数量不足则去网页抓
     [self cachedDataWithAlbumId:albumId
                        userName:userName
                           start:start
@@ -545,6 +547,10 @@ SINGLETON_GCD(DAHtmlRobot)
     [self cacheData:photos forUser:nil forAlbum:albumId start:start];
 }
 
+/*
+ * 这是一个异步的方法
+ * 读取本地数据,读取结束后传递引用即相当于返回数据
+ */
 + (void)cachedDataWithAlbumId:(NSUInteger)albumId userName:(NSString *)userName start:(NSUInteger)start completion:(SLObjectBlock)completion{
     NSString *fomatter = nil;
     NSString *fileName = nil;

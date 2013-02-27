@@ -488,13 +488,10 @@ static BOOL IsShowingCategory = NO;
         NSString *appInStoreVersion = dic[@"app_version"];
         NSString *appVersion = [BundleHelper bundleShortVersionString];
         
-<<<<<<< HEAD
         // 有些时候必须要更新的,有些时候是可以选择取消的
         // 但是这个必须要更新的动作貌似是AppStore不允许的
-=======
         NSLog(@"%@ %@",appInStoreVersion,appVersion);
         
->>>>>>> reading
         BOOL needForceUpdate = [dic[@"force_update"] boolValue];
         if ([appInStoreVersion compare:appVersion] == NSOrderedDescending) {
             if (!needForceUpdate) {
