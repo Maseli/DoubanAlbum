@@ -513,6 +513,8 @@ static BOOL IsShowingCategory = NO;
     
     BOOL isValid = [[DoubanAuthEngine sharedDoubanAuthEngine] isValid];
     if (isValid) {
+        // 在进行数据请求之前将access token刷新
+        // 注:这里是第一次调用DAHttpClient的单例方法,触发了其初始化的程序,也是指这里是第一次通过DAHttpClient访问网络
         [DoubanAuthEngine checkRefreshToken];
         
         // 加载用户的相册数据,首选是CACHE路径数据,如果数量不足,则完全使用从网络新抓取的数据(但CACHE会添加)

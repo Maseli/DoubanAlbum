@@ -9,6 +9,7 @@
 #ifndef DoubanAlbum_DoubanAPIDefines_h
 #define DoubanAlbum_DoubanAPIDefines_h
 
+//TODO 这里要填写自己申请的豆瓣API信息
 #define kDouban_API_Key                 @"Your Douban app Id"
 #define kDouban_API_Secret              @"Your Douban app key"
 

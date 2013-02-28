@@ -50,6 +50,7 @@ NSString * const kDoubanShuoURLString = @"/shuo/v2/statuses/";
 // 在GCD队列中实例化,目的貌似是为了单例
 SINGLETON_GCD(DAHttpClient);
 
+/* 初始化方法,由于这个类是继承自AFHTTPClient的,所以有些参数必须初始化,例如baseURL */
 - (id)init {
     // 判断当前时间是否有效
     BOOL isValid = [[DoubanAuthEngine sharedDoubanAuthEngine] isValid];
@@ -605,13 +606,14 @@ SINGLETON_GCD(DAHttpClient);
     }];
 }
 
-
+/************* 这些请求的path都是传的相对的,BaseURL在初始化这个类的实例时传递了 **************/
 + (void)collectedAlbumsWithSuccess:(SLArrayBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     
     // key是一个kAlbumCollectedNoteId_ForUser_%d形式的串
     NSString *key = [self collectedAlbumsNoteKeyForCurrentUser];
     // 从NSUserDefaults获取key对应的结果
     NSUInteger noteId = [USER_DEFAULT integerForKey:key];
+    // 注:NSUserDefaults是原来存储小数据的地方,由ios来管理
     if (noteId) {
         // 如果noteId在NSUserDefaults中已经存在
         // path的格式/v2/note/%d

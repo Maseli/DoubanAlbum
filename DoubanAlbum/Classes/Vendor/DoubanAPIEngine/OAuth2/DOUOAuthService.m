@@ -161,9 +161,12 @@ static DOUOAuthService *myInstance = nil;
 //}
 //
 //
+
+/*  */
 - (NSError *)validateRefresh {
     if (!self.refreshToken) return nil;
     
+    // 既然DAHttpClient要求是单例,为什么这里直接实例化了一个实例?
     DAHttpClient *client = (DAHttpClient *)[DAHttpClient clientWithBaseURL:[NSURL URLWithString:@"https://www.douban.com"]];
     
     NSMutableURLRequest *request = [client requestWithMethod:@"POST"
