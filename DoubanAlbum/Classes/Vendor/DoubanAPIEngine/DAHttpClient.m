@@ -313,6 +313,8 @@ SINGLETON_GCD(DAHttpClient);
 /* 根据用户名查找其相册 */
 + (void)userAlbumsWithUserName:(NSString *)userName start:(NSUInteger)start success:(SLArrayBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     
+    // 使用DAHtmlRobot中对应方法,获取用户的相册数据
+    // 这些数据优先来源于本地CACHE路径,如果数量不足则访问网络抓取
     [DAHtmlRobot userAlbumsWithUserName:userName
                          start:start
                     completion:^(NSArray *array) {
@@ -603,11 +605,16 @@ SINGLETON_GCD(DAHttpClient);
     }];
 }
 
+
 + (void)collectedAlbumsWithSuccess:(SLArrayBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     
+    // key是一个kAlbumCollectedNoteId_ForUser_%d形式的串
     NSString *key = [self collectedAlbumsNoteKeyForCurrentUser];
+    // 从NSUserDefaults获取key对应的结果
     NSUInteger noteId = [USER_DEFAULT integerForKey:key];
     if (noteId) {
+        // 如果noteId在NSUserDefaults中已经存在
+        // path的格式/v2/note/%d
         NSString *path = [NSString stringWithFormat:kDoubanDeleteOrUpdateNotesURLString, noteId];
         path = [NSString stringWithFormat:@"%@?format=html_full", path];
         [[DAHttpClient sharedDAHttpClient] getPath:path parameters:nil success:^(__unused AFHTTPRequestOperation *operation, id JSON) {
@@ -650,6 +657,7 @@ SINGLETON_GCD(DAHttpClient);
             failure(error);
         }];
     }else{
+        // 如果noteId目前在NSUserDefaults中不存在
         [DoubanAuthEngine checkRefreshToken];
         
         [self collectedAlbumsNoteId:^(NSString *noteId) {

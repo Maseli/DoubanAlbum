@@ -56,16 +56,21 @@ SINGLETON_GCD(DoubanAuthEngine)
     return NO;
 }
 
+/* 执行刷新Token */
 + (NSError *)executeRefreshToken {
+    // 为service设置认证获取路径
     DOUOAuthService *service = [DOUOAuthService sharedInstance];
     service.authorizationURL = kTokenUrl;
     
+    // 验证刷新,获得认证刷新
     return [service validateRefresh];
 }
 
 //check if necessory refresh access token before each request,  sync
 + (void)checkRefreshToken{
+    // 获得DOUOAuthStore单例
     DOUOAuthStore *store = [DOUOAuthStore sharedInstance];
+    // 如果条件满足,执行刷新Token
     if (store.userId != 0 && store.refreshToken && [store shouldRefreshToken]) {
         [self executeRefreshToken];
     }

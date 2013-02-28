@@ -515,6 +515,8 @@ static BOOL IsShowingCategory = NO;
     if (isValid) {
         [DoubanAuthEngine checkRefreshToken];
         
+        // 加载用户的相册数据,首选是CACHE路径数据,如果数量不足,则完全使用从网络新抓取的数据(但CACHE会添加)
+        // 在回调函数中将获得的result传给一个单例的DADataEnvironment
         [DAHttpClient userAlbumsWithUserName:[@([[DOUOAuthStore sharedInstance] userId]) description]
                                        start:0
                                      success:^(NSArray *array) {

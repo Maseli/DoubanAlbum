@@ -235,6 +235,8 @@ SINGLETON_GCD(DAHtmlRobot)
 
 }
 
+/********** 业务角度封装>>>>> **********/
+/* 查询相册的照片数据 */
 + (void) photosInAlbum:(NSUInteger)albumId start:(NSUInteger)start completion:(SLDictionaryBlock)completion{
     [self dataWithDataType:DoubanDataTypePhotosInAlbum
                   userName:nil
@@ -245,7 +247,7 @@ SINGLETON_GCD(DAHtmlRobot)
                 }];
 }
 
-/* 根据UserName查询相册信息 */
+/* 查询用户的相册数据 */
 + (void)userAlbumsWithUserName:(NSString *)userName start:(NSUInteger)start completion:(SLArrayBlock)completion{
     [self dataWithDataType:DoubanDataTypeAlbumsForUser
                   userName:userName
@@ -255,10 +257,13 @@ SINGLETON_GCD(DAHtmlRobot)
                     completion(array);
                 }];
 }
+/********** 业务角度封装<<<<< **********/
 
-/* 根据条件抓取网页数据,然后写入到 */
+/* 获取CACHE的数据,数据不足时通过网络请求(通过回调) */
+/* 通过对代码进行分析发现,通过网络抓取时原来本地的数据不会加到结果集中 */
 + (void)dataWithDataType:(DoubanDataType)dataType userName:(NSString *)userName albumId:(NSUInteger)albumId start:(NSUInteger)start completion:(SLObjectBlock)completion{
     NSString *fomatter = nil;
+    // 这里的长度限制往往用于对本地数据数量的判断,和对远程抓数时集合的初始化
     NSUInteger countPerPage = 0;
     NSString *target = nil;
 
@@ -279,7 +284,8 @@ SINGLETON_GCD(DAHtmlRobot)
         target = [@(albumId) description];
     }
     
-    // 先从本地CACHE的plist中获取数据,数量不足则去网页抓
+    // 先从本地CACHE的plist中获取数据,在回调中判断数量不足则去网页抓
+    // 就是从这个调用开始,堆中出现一个变量指向结果集,栈开始返回,这个参数completion为首个有点意义的回调
     [self cachedDataWithAlbumId:albumId
                        userName:userName
                           start:start
@@ -292,7 +298,7 @@ SINGLETON_GCD(DAHtmlRobot)
                              count = [dic count];
                          }
                          
-                         // 
+                         // 判断CACHE中取的数据数量是否足够,够就继续回调否则从网页请求抓取
                          if (count == countPerPage) {
                              completion(dic);
                          }else{
@@ -317,9 +323,9 @@ SINGLETON_GCD(DAHtmlRobot)
                                                                 if (dataType == DoubanDataTypePhotosInAlbum){
                                                     // 声明一个存储解析结果的Map
                                                         results = [NSMutableDictionary dictionaryWithCapacity:2];
-                                                                    // 从请求获取的data中解析数据
+                                                                    // 从请求获取的data中解析数据,存到results
                                                                     [self analysePhotosInAlbumWithData:data withResults:results express:[self commandFor:kPhotosIdInAlbumExpression]];
-                                                                    // 在CACHE路径写plist存results[@"photoIds"]
+                                                                    // 在CACHE路径新建或更新plist存储得到的results
                                                                     [self cacheData:results[@"photoIds"] forUser:nil forAlbum:albumId start:start];
                                                                     
                                                                     NSString *des = results[Key_Album_Describe];
@@ -332,14 +338,14 @@ SINGLETON_GCD(DAHtmlRobot)
                                                                     results = [NSMutableArray arrayWithCapacity:countPerPage];
                                                                     // 从请求获取的data中解析数据
                                                                     [self analyseUserAlbumsWithData:data withResults:results];
-                                                                    // 在CACHE路径写plist存results
+                                                                    // 在CACHE路径新建或更新plist存储得到的results
                                                                     [self cacheData:results forUser:userName forAlbum:0 start:start];
                                                                 }
                                                             } completion:^{
                                                                 completion(results);
                                                             }];
                                                         }else{
-                                                    // 如果请求失败
+                                                            // 如果请求失败
                                                             dispatch_async(dispatch_get_main_queue(), ^{
                                                                 completion(nil);
                                                             });
@@ -630,7 +636,7 @@ SINGLETON_GCD(DAHtmlRobot)
 /*
  * 把照片id/相册信息列表转为Map写成plist文件(key从0开始),放在CACHE路径下
  * 通过username
- * data:照片id数组
+ * data:照片id数组,即网页抓的result
  * start:作为Map中key的id,由于有分页的问题,所以每页数据开始的值是不一样的,只有第一页的start为0
  */
 + (void)cacheData:(NSArray *)data forUser:(NSString *)userName forAlbum:(NSUInteger)albumId start:(NSUInteger)start{
