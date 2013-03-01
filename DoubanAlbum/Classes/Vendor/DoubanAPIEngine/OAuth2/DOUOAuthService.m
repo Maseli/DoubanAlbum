@@ -166,9 +166,11 @@ static DOUOAuthService *myInstance = nil;
 - (NSError *)validateRefresh {
     if (!self.refreshToken) return nil;
     
-    // 既然DAHttpClient要求是单例,为什么这里直接实例化了一个实例?
+    // 在单例之前的一次实例化,但是这个实例化没有使用自定义的init代码
+    // 而且使用了超类的类方法,因为自定义init中BaseURL跟现在的操作不符
     DAHttpClient *client = (DAHttpClient *)[DAHttpClient clientWithBaseURL:[NSURL URLWithString:@"https://www.douban.com"]];
     
+    // 准备一个HttpRequest,发送认证信息至doubanAPI.
     NSMutableURLRequest *request = [client requestWithMethod:@"POST"
                                                         path:@"/service/auth2/token"
                                                   parameters:@{kGrantTypeKey:kGrantTypeRefreshToken,
@@ -176,27 +178,39 @@ static DOUOAuthService *myInstance = nil;
                                                 kClientIdKey:kDouban_API_Key,
                                             kClientSecretKey:kDouban_API_Secret,
                                              kRedirectURIKey:kRedirectUrl}];
+    // 设置接收编码
     [request setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
     
     NSURLResponse *response = nil;
     NSError *error = nil;
+    // 发送同步请求,虽然Apple.inc不建议在主线程中调用这个
+    // 因为不确定啥时候能返回,但是这里因为是授权信息所以只能这样了.
     NSData *data = [NSURLConnection sendSynchronousRequest:request
                                          returningResponse:&response
                                                      error:&error];
     if (!error) {
+        
+        // 将网络请求接收到的数据转为NSString,其实就是请求得到的一段返回JSON
         NSString *response = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
+        // 从JSON转为NSDictionary,这样方面解析
         NSDictionary *dic = [response objectFromJSONString];
         
+        // 取出得到的Token
         id token = dic[kAccessTokenKey];
         
         if (token) {
+            // 如果Token存在,获取认证存储类的单例
             DOUOAuthStore *store = [DOUOAuthStore sharedInstance];
+            // 使用得到的数据更新这个实例
             [store updateWithSuccessDictionary:dic];
             
+            // 注意!这里是第一次获得DAHttpClient的单例,设置客户端请求的一个默认header("access_token")
+            // 这个操作和DAHttpClient中的init方法重复了,之前不单例再使用是因为init固定了baseURL的问题
             [[DAHttpClient sharedDAHttpClient] setDefaultHeader:kAccessTokenKey value:token];
         }
     }
     
+    // 返回错误引用
     return error;
 }
 

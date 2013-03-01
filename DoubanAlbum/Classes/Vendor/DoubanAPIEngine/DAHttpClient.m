@@ -70,6 +70,8 @@ SINGLETON_GCD(DAHttpClient);
         
         if (isValid) {
             // 如果认证有效,设置参数access_token
+            // 其实这里不设置也没有关系,因为在请求token之后就得到这个类单例设置了一下
+            // 貌似作者在这个地方写重复了
             id accessToken = [[DOUOAuthStore sharedInstance] accessToken];
             [self setDefaultHeader:kAccessTokenKey value:accessToken];
         }
@@ -404,11 +406,13 @@ SINGLETON_GCD(DAHttpClient);
         NSUInteger noteId = [USER_DEFAULT integerForKey:key];
         
         if (!noteId) {
+            // 如果没有noteId
             //check AlbumCollectedNote exist in douban
             [self collectedAlbumsNoteId:^(NSString *noteIdT) {
                 if (noteIdT) {
                     SLLog(@"找到 noteId %@", noteIdT);
                     NSString *key = [self collectedAlbumsNoteKeyForCurrentUser];
+                    // 写NSUserDefaults
                     [USER_DEFAULT setObject:noteIdT forKey:key];
                     [USER_DEFAULT synchronize];
                     
@@ -572,6 +576,7 @@ SINGLETON_GCD(DAHttpClient);
     }
 }
 
+/* 从返回的JSON中解析出noteId */
 + (void)collectedAlbumsNoteId:(SLObjectBlock)notiBlock{
     [self notesListWithSuccess:^(NSDictionary *dic) {
         NSArray *titles = [dic valueForKeyPath:@"notes.title"];
@@ -593,6 +598,7 @@ SINGLETON_GCD(DAHttpClient);
 + (void)notesListWithSuccess:(SLDictionaryBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     int userId = [[DOUOAuthStore sharedInstance] userId];
     NSString *path = [NSString stringWithFormat:kDoubanUserNotesListURLString, userId];
+    // 貌似getPath的回调success的参数JSON是NSDictionary类型的
     [[DAHttpClient sharedDAHttpClient] getPath:path parameters:nil success:^(__unused AFHTTPRequestOperation *operation, id JSON) {
         SLLog(@"result %@", JSON);
         
@@ -606,7 +612,7 @@ SINGLETON_GCD(DAHttpClient);
     }];
 }
 
-/************* 这些请求的path都是传的相对的,BaseURL在初始化这个类的实例时传递了 **************/
+/************* 这些请求的path都是传的相对的,BaseURL在初始化这个类的实例时(init)写好了 **************/
 + (void)collectedAlbumsWithSuccess:(SLArrayBlock)success error:(SLIndexBlock)error failure:(SLErrorBlock)failure{
     
     // key是一个kAlbumCollectedNoteId_ForUser_%d形式的串
@@ -615,7 +621,7 @@ SINGLETON_GCD(DAHttpClient);
     NSUInteger noteId = [USER_DEFAULT integerForKey:key];
     // 注:NSUserDefaults是原来存储小数据的地方,由ios来管理
     if (noteId) {
-        // 如果noteId在NSUserDefaults中已经存在
+        // 如果noteId在NSUserDefaults中已经存在(不存在的在获得noteId以后仍会走这个分支)
         // path的格式/v2/note/%d
         NSString *path = [NSString stringWithFormat:kDoubanDeleteOrUpdateNotesURLString, noteId];
         path = [NSString stringWithFormat:@"%@?format=html_full", path];
@@ -631,16 +637,19 @@ SINGLETON_GCD(DAHttpClient);
                     if (startR.location != NSNotFound && endR.location != NSNotFound) {
                         __block NSDictionary *collectedAlbums = nil;
                         [GCDHelper dispatchBlock:^{
+                            // 取一段JSON(start和end之间)
                             NSUInteger start = startR.location+startR.length;
                             NSString *targetString = [content substringWithRange:NSMakeRange(start, endR.location-start)];
                             
                             NSMutableString *muString = [NSMutableString stringWithString:targetString];
+                            // 替所有的引号(")
                             NSRange range = [muString rangeOfString:@"&quot;"];
                             while (range.location != NSNotFound) {
                                 [muString replaceCharactersInRange:range withString:@"\""];
                                 range = [muString rangeOfString:@"&quot;"];
                             }
                             
+                            // 将JSON转为NSDictionary
                             collectedAlbums = [muString objectFromJSONString];
                             SLLog(@"获取我的收藏 %@", collectedAlbums);
                         } completion:^{
@@ -662,12 +671,15 @@ SINGLETON_GCD(DAHttpClient);
         // 如果noteId目前在NSUserDefaults中不存在
         [DoubanAuthEngine checkRefreshToken];
         
+        // 获得noteId
         [self collectedAlbumsNoteId:^(NSString *noteId) {
             if (noteId) {
+                // 写noteId到NSUserDefaults
                 NSString *key = [self collectedAlbumsNoteKeyForCurrentUser];
                 [USER_DEFAULT setObject:noteId forKey:key];
                 [USER_DEFAULT synchronize];
                 
+                // 递归调用一次,由于已经存在noteId,所以这次调用会正常返回,可以认为是尾递归哦~
                 [self collectedAlbumsWithSuccess:success error:error failure:failure];                    
             }else{
                 success(nil);

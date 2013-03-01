@@ -56,13 +56,14 @@ SINGLETON_GCD(DoubanAuthEngine)
     return NO;
 }
 
-/* 执行刷新Token */
+/* 执行刷新Token,将其写为DAHttpCilent的DefaulHeader */
 + (NSError *)executeRefreshToken {
     // 为service设置认证获取路径
     DOUOAuthService *service = [DOUOAuthService sharedInstance];
+    // kToKenUrl为https://www.douban.com/service/auth2/token
     service.authorizationURL = kTokenUrl;
     
-    // 验证刷新,获得认证刷新
+    // 刷新token,将其写为DAHttpCilent的DefaulHeader
     return [service validateRefresh];
 }
 
