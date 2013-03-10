@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="2.0" toolsVersion="3084" systemVersion="12C3012" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" initialViewController="Zv3-bv-MDE">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="2.0" toolsVersion="2840" systemVersion="12C3012" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" initialViewController="Zv3-bv-MDE">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="2083"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="1926"/>
     </dependencies>
     <scenes>
         <!--Navigation Controller-->
@@ -1122,8 +1122,6 @@
         <class className="DAHomeViewController" superclassName="UIViewController">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAHomeViewController.h"/>
             <relationships>
-                <relationship kind="action" name="choseCategory:" candidateClass="UIButton"/>
-                <relationship kind="action" name="showPhotosInAlbum:" candidateClass="UISwipeGestureRecognizer"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
                 <relationship kind="outlet" name="_tableView" candidateClass="UITableView"/>
             </relationships>
@@ -1140,6 +1138,8 @@
         <class className="DAPhotoWallViewController" superclassName="UIViewController">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAPhotoWallViewController.h"/>
             <relationships>
+                <relationship kind="action" name="swipeBack:"/>
+                <relationship kind="action" name="swipeUserAlbums:"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
             </relationships>
         </class>
@@ -1150,7 +1150,6 @@
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAScanePhotoViewController.h"/>
             <relationships>
                 <relationship kind="action" name="cancel:" candidateClass="UITapGestureRecognizer"/>
-                <relationship kind="action" name="downloadImage:"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
                 <relationship kind="outlet" name="_downloadBtn" candidateClass="UIButton"/>
             </relationships>
@@ -1167,6 +1166,7 @@
         <class className="DAUserAblumsViewController" superclassName="UIViewController">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/DAUserAblumsViewController.h"/>
             <relationships>
+                <relationship kind="action" name="swipeBack:"/>
                 <relationship kind="outlet" name="_collectionView" candidateClass="UICollectionView"/>
             </relationships>
         </class>
@@ -1190,6 +1190,9 @@
         </class>
         <class className="UICollectionViewFlowLayout" superclassName="UICollectionViewLayout">
             <source key="sourceIdentifier" type="project" relativePath="./Classes/UICollectionViewFlowLayout.h"/>
+        </class>
+        <class className="UICollectionViewLayout" superclassName="NSObject">
+            <source key="sourceIdentifier" type="project" relativePath="./Classes/UICollectionViewLayout.h"/>
         </class>
     </classes>
     <simulatedMetricsContainer key="defaultSimulatedMetrics">

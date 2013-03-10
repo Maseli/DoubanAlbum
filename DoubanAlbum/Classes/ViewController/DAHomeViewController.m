@@ -83,9 +83,17 @@ static BOOL IsShowingCategory = NO;
     // 初始化数据
     [self initialData:YES];
     
+    /********** 
+     使用KVO机制,即NSKeyValueObserving
+     它是通过category对NSObject添加了一些方法,实现对key的value变化进行Observing
+     **********/
     [[DADataEnvironment sharedDADataEnvironment] addObserver:self forKeyPath:@"collectedAlbums" options:NSKeyValueObservingOptionNew context:nil];
     
     [USER_DEFAULT addObserver:self forKeyPath:@"douban_userdefaults_user_id" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld context:nil];
+    /**********
+     一旦这两个key任意一个的value改变,当前类的observeValueForKeyPath方法会触发
+     其实分为自动通知和手动通知两种,默认情况为自动通知(即不需要调用willChange....方法)
+     **********/
 }
 
 - (void)didReceiveMemoryWarning
@@ -412,8 +420,9 @@ static BOOL IsShowingCategory = NO;
         [self startAnimation:_refreshBtn];
     }
     
-    // 刷新时声明一段具体的代码块,处理传入的数据
+    // 声明一段具体的代码块,这段代码块是为了在网络请求前先处理当前应用内最新的数据(后cache的或者原始的那份)
     SLDictionaryBlock localBlock = (inital?^(NSDictionary *dic) {
+        // 设置数据源引用
         _appData = dic;
         
         // 当dic.count满足条件时,把Dictionary的值里的http___3ww.、&lt;和&gt;处理了
@@ -423,7 +432,7 @@ static BOOL IsShowingCategory = NO;
         // 顶部的标签组重新加载数据
         [_collectionView reloadData];
         
-        // 这个是分类,也是提前写在plist文件里的
+        // 这个是分类,在配置文件中有cg_all
         NSArray *doubanCategory = [dic valueForKeyPath:@"cg_all"];
         DATagsLayout *layout = (DATagsLayout *)_collectionView.collectionViewLayout;
         layout.category = doubanCategory;
@@ -436,7 +445,7 @@ static BOOL IsShowingCategory = NO;
             _seletedCategory = arc4random()%count;
         }
         
-        // 将选中分类的值设置为数据源
+        // 将选中分类的数据设置为数据源
         _dataSource = [doubanCategory objectAtIndex:_seletedCategory];
         // 设置标题为选中分类名字
         self.title = _dataSource[@"category"];
@@ -444,15 +453,24 @@ static BOOL IsShowingCategory = NO;
         // 表格刷新数据
         [_tableView reloadData];
     }:nil);
-        
+    
+    //TODO 注释
     [DAHtmlRobot requestCategoryLocalData:localBlock completion:^(NSDictionary *dic) {
+        // NSString转BOOL
         BOOL needUpdateView = [dic[@"needUpdateView"] boolValue];
+        
+        NSLog(@"打印一下当前应用中的数据版本号：%@",[USER_DEFAULT objectForKey:@"Key_Latest_Data_Version"]);
+        // 如果日志里的数据版本号与应用内NSUserDefaults写的不一致就要update,这时新数据已经缓存好了
         if (needUpdateView) {
+            NSLog(@"当前的数据版本号与日志写的不符,needUpdate有效");
+            // 为_appData设置新数据的引用
             _appData = dic;
-            // 设置DAHtmlRobot的RobotCommands参数
+            // 设置DAHtmlRobot的RobotCommands参数,从日志JSON中取出command
             [DAHtmlRobot setRobotCommands:dic[@"command"]];
+            // 分类变量引用日志JSON中的所有分类数据(作为页面控件的数据源)
             NSArray *doubanCategory = [dic valueForKeyPath:@"cg_all"];
             
+            // 让相册分类重新加载
             [_collectionView reloadData];
 //        static int i = 0;
 //        NSArray *albumIds = [doubanCategory valueForKeyPath:@"albums.album_id"];
@@ -469,12 +487,15 @@ static BOOL IsShowingCategory = NO;
 //            }];
 //        }];
             
+            //TODO 从这继续读
             DATagsLayout *layout = (DATagsLayout *)_collectionView.collectionViewLayout;
             layout.category = doubanCategory;
             
             NSUInteger count = [doubanCategory count];
             if (inital && count > 0 && _seletedCategory >= count) {
+                // 随机选择一个分类作为选中项,让用户每次打开软件都有几率看到不同的内容
                 _seletedCategory = arc4random()%count;
+                /* arc4rondom()%count可以得到0~count-1范围的整数,因为整除就余0,否则最多就到count-1,再多1就整除了 */
             }
             
             if (!inital && _seletedCategory < count) {
@@ -852,6 +873,7 @@ static BOOL IsShowingCategory = NO;
     }
 }
 
+/* 这个是两个被Observing的key在value变化时触发的方法,NSKeyValueObserving这个category规定的 */
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
 //    if ([@"myAlbums" isEqualToString:keyPath]) {
@@ -864,6 +886,7 @@ static BOOL IsShowingCategory = NO;
 //                [_tableView reloadData];
 //            });
 //        }
+    // 要先判断一下是哪个key的value变化了
     if ([@"collectedAlbums" isEqualToString:keyPath]) { //for add or delete collected album
         NSArray *doubanCategory = [_appData valueForKeyPath:@"cg_all"];
         

@@ -625,6 +625,7 @@ SINGLETON_GCD(DAHttpClient);
         // path的格式/v2/note/%d
         NSString *path = [NSString stringWithFormat:kDoubanDeleteOrUpdateNotesURLString, noteId];
         path = [NSString stringWithFormat:@"%@?format=html_full", path];
+        // 这个发网络请求的手段是基于AFNetworking
         [[DAHttpClient sharedDAHttpClient] getPath:path parameters:nil success:^(__unused AFHTTPRequestOperation *operation, id JSON) {
             SLLog(@"JSON %@", JSON);
             

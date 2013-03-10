@@ -71,9 +71,11 @@ SINGLETON_GCD(DAHtmlRobot)
 }
 
 /* 当count满足条件时,把Dictionary的值里的http___3ww.、&lt;和&gt;处理了 */
+/* 配置文件是plist即xml,所以有些符号需要转义存储 */
 + (void)setRobotCommands:(NSDictionary *)dic{
     SLLog(@"dic %@", dic);
     
+    //TODO 这个为什么判断数量还不清楚
     if (dic.count == RobotCommands_Default.count) {
         RobotCommands = [NSMutableDictionary dictionaryWithDictionary:dic];
         
@@ -83,7 +85,7 @@ SINGLETON_GCD(DAHtmlRobot)
         [dic enumerateKeysAndObjectsUsingBlock:^(id key, NSString *obj, BOOL *stop) {
             NSMutableString *muObj = [NSMutableString stringWithString:obj];
             
-            // 在obj中寻找"http___3ww.",话说那个.不替也行,还有那两个ww,这么搜为了逻辑
+            // 在值中寻找"http___3ww.",话说那个'.'不替也行,还有那两个ww,这么搜为了逻辑
             NSRange range = [obj rangeOfString:httpString];
             // 如果找到
             if (range.location != NSNotFound) {
@@ -109,6 +111,9 @@ SINGLETON_GCD(DAHtmlRobot)
             
             // 将处理完成的字符串设置回原Dictionary的对应Value
             RobotCommands[key] = muObj;
+            /********** 
+             这段代码告诉我们,处理NSString时要先实例化一个NSMutableString
+             *********/
         }];
         
         SLLog(@"RobotCommands %@", RobotCommands);
@@ -173,6 +178,8 @@ SINGLETON_GCD(DAHtmlRobot)
 + (void)requestCategoryLocalData:(SLDictionaryBlock)localBolck completion:(SLDictionaryBlock)completion{
     
     if (localBolck) {
+        // 获取相册配置文件(按记录的数据版本号从CACHE中获取,没有就拿应用中的原始那份)
+        // 调用传入的Block处理相册配置文件的NSDictionary
         localBolck([self latestDoubanAlbumData]);
     }
 //    NSString *path = [[NSBundle mainBundle] pathForResource:@"DoubanAlbumData_Local" ofType:@"plist"];
@@ -182,6 +189,8 @@ SINGLETON_GCD(DAHtmlRobot)
 //#warning  
 //    return;
     
+    // 这是一个url(废话),是一篇豆瓣日志
+    // 用来管理加载的数据,就是把数据以JSON格式写在正文里了
     static NSString *url  = @"http://www.douban.com/note/251470569/";
     
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
@@ -190,19 +199,25 @@ SINGLETON_GCD(DAHtmlRobot)
                            completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
                                __block BOOL needUpdateView = YES;
                                __block id result = nil;
+                               // 使用GCD异步编程
                                [GCDHelper dispatchBlock:^{
                                    NSString *resultString = nil;
                                    if (error == nil) {
+                                       // 如果请求没有出现错误,获取返回的html
                                        NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                       // 准备解析html,确定json范围
                                        NSRange startR = [html rangeOfString:@"---start---"];
                                        NSRange endR = [html rangeOfString:@"---end---"];
                                        
+                                       // 如果JSON的边界存在
                                        if (startR.location != NSNotFound && endR.location != NSNotFound) {
                                            NSUInteger start = startR.location+startR.length;
+                                           // 获取实际JSON串
                                            NSString *content = [html substringWithRange:NSMakeRange(start, endR.location-start)];
-                                           
+                                           // 使用JSON构建可变字符串
                                            NSMutableString *muString = [NSMutableString stringWithString:content];
                                            
+                                           // 替所有的&quot;也就是"
                                            NSRange range = [muString rangeOfString:@"&quot;"];
                                            while (range.location != NSNotFound) {
                                                [muString replaceCharactersInRange:range withString:@"\""];
@@ -221,14 +236,18 @@ SINGLETON_GCD(DAHtmlRobot)
                                    }else{
                                        result = [resultString objectFromJSONString];
                                        
+                                       // 如果从页面解析的JSON中包含数据
                                        if ([result count] > 0) {
+                                           // 缓存网页中写的数据,缓存成功就设置为需要更新
                                            needUpdateView = [self cacheDoubanAlbumData:result];
                                        }
                                    }
                                } completion:^{
                                    NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithDictionary:result];
+                                   // @(needUpdateView)是转NSString
                                    dic[@"needUpdateView"] = @(needUpdateView);
                                    
+                                   // 这个块是为了进一步处理数据,并利用数据更新应用的各部分
                                    completion(dic);
                                }];
                            }];
@@ -492,31 +511,45 @@ SINGLETON_GCD(DAHtmlRobot)
 
 @implementation DAHtmlRobot (Cache)
 
+/* 
+    按NSUserDefaults记的数据版本号取的配置文件(CACHE中),没有就取应用内的一个原始的
+    话说新装这个软件的时候肯定得取原始的了,而且原始的的确也是那个应用最新的数据了
+ */
 + (NSDictionary *)latestDoubanAlbumData{
+    // 从NSUserDefaults中取数据版本号,这个版本号是加载日志JSON后按JSON的version写的
     NSString *latestDataVersion = [USER_DEFAULT objectForKey:@"Key_Latest_Data_Version"];
     
     NSDictionary *dic = nil;
+    // 具备latestDataVersion就意味着具备了数据,数据的plist文件名即version号.plist
 //#warning 
     if (latestDataVersion) {
         NSString *cacheFolderPath = [APP_CACHES_PATH stringByAppendingPathComponent:kDoubanAlbumDataPath];
+        // 这个path就是CACHE\DoubanAlbumData\版本号.plist,是在日志JSON版本与本地不同时缓存的
         NSString *path = [NSString stringWithFormat:@"%@/%@.plist", cacheFolderPath, latestDataVersion];
         
+        // 把path对应的plist转为NSDictionary
         dic = [NSDictionary dictionaryWithContentsOfFile:path];
     }
     
     if (!dic) {
+        // 如果path对应的plist文件不存在,则获取应用内DoubanAlbumData_Local.plist文件路径
         NSString *path = [[NSBundle mainBundle] pathForResource:@"DoubanAlbumData_Local" ofType:@"plist"];
+        // 使用应用内DoubanAlbumData_Local.plist文件构建NSDictionary
         dic = [NSDictionary dictionaryWithContentsOfFile:path];
     }
     
     return dic;
 }
 
+/* 缓存豆瓣日志中写的JSON数据 */
 + (BOOL)cacheDoubanAlbumData:(NSDictionary *)result{
     NSString *newDataVersion = result[@"data_version"];
     NSString *latestDataVersion = [USER_DEFAULT objectForKey:@"Key_Latest_Data_Version"];
+    // 这块原作者比较BT,并没有判断版本高低,而是只要与日志中数据版本号不一致,就缓存日志的JSON数据
+    // 话说那日志受其控制,只要不发布低版本号就会一直往高版本更迭
     if ([newDataVersion compare:latestDataVersion] != NSOrderedSame) {
         NSString *cacheFolderPath = [APP_CACHES_PATH stringByAppendingPathComponent:kDoubanAlbumDataPath];
+        // 以数据版本号作为文件名写plist文件
         NSString *path = [NSString stringWithFormat:@"%@/%@.plist", cacheFolderPath, newDataVersion];
         [result writeToFile:path atomically:YES];
         
